@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+body {
+  background: linear-gradient(150deg, #f8fafc 0%, #eff6ff 55%, #f5f3ff 100%);
+  min-height: 100vh;
+}
+
+@media print {
+  @page { margin: 15mm 10mm; }
+
+  body::before {
+    content: "自動車保険 比較結果";
+    display: block;
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 12px;
+    color: #1e293b;
+  }
+
+  table { border-collapse: collapse !important; }
+  th, td { border: 1px solid #e2e8f0 !important; }
+  tr { page-break-inside: avoid; }
+
+  .shadow-sm, .rounded-2xl, .rounded-xl {
+    box-shadow: none !important;
+    border-radius: 4px !important;
+  }
+  .overflow-x-auto { overflow: visible !important; }
+}
