@@ -25,123 +25,104 @@ const ANNUAL_MILEAGES  = [
 
 export default function SharedInfoPanel({ info, locked, onUpdate, onToggleLock }: Props) {
   const [open, setOpen] = useState(true);
-  const [accidentFree, setAccidentFree] = useState(
-    () => !ACCIDENT_OPTIONS.includes(info.accidentCount)
-  );
-  const [gradeFree, setGradeFree] = useState(
-    () => !GRADE_OPTIONS.includes(info.currentGrade)
-  );
+  const [accidentFree, setAccidentFree] = useState(() => !ACCIDENT_OPTIONS.includes(info.accidentCount));
+  const [gradeFree,    setGradeFree]    = useState(() => !GRADE_OPTIONS.includes(info.currentGrade));
 
   const set = <K extends keyof SharedInfo>(k: K, v: SharedInfo[K]) =>
     onUpdate({ ...info, [k]: v });
 
+  const isLicenseCustom = !LICENSE_COLORS.includes(info.licenseColor);
+  const isCustomMileage = !ANNUAL_MILEAGES.slice(0, -1).includes(info.annualMileage);
+
   return (
     <div
-      className={`sticky top-0 z-30 rounded-2xl border transition-all duration-300 ${
-        locked
-          ? "border-blue-400/60 bg-white/90 backdrop-blur-md shadow-[0_4px_24px_-4px_rgba(59,130,246,0.25)]"
-          : "border-slate-200/80 bg-white/90 backdrop-blur-md shadow-lg"
-      }`}
+      className="sticky top-0 z-30 rounded-[20px] border transition-all duration-300"
+      style={{
+        background: "var(--c-surface)",
+        borderColor: locked ? "rgba(59,130,246,0.4)" : "var(--c-border)",
+        boxShadow: locked
+          ? "0 4px 24px rgba(59,130,246,0.18), var(--sh-md)"
+          : "var(--sh-md)",
+        backdropFilter: "blur(12px)",
+      }}
     >
-      {/* ── Header bar ─────────────────────────── */}
-      <div className="flex items-center justify-between px-5 py-3">
+      {/* ── Header ─────────────────────────── */}
+      <div className="flex items-center justify-between px-6 py-4">
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
-          className="flex items-center gap-2 text-sm font-semibold text-slate-700 hover:text-slate-900 transition"
+          className="flex items-center gap-2.5 text-sm font-semibold text-[var(--c-text-1)] hover:text-[var(--c-blue)] transition-colors"
         >
-          <Link2
-            size={15}
-            className={locked ? "text-blue-500" : "text-slate-400"}
-          />
+          <Link2 size={15} className={locked ? "text-blue-500" : "text-[var(--c-text-3)]"} />
           共通見積もり条件
           {locked && (
-            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+            <span className="text-xs bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full font-semibold">
               固定中
             </span>
           )}
           <ChevronDown
             size={14}
-            className={`text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+            className={`text-[var(--c-text-3)] transition-transform duration-200 ${open ? "rotate-180" : ""}`}
           />
         </button>
 
-        {/* Lock toggle */}
         <button
           type="button"
           onClick={onToggleLock}
-          className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg border transition ${
-            locked
-              ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
-              : "bg-white text-slate-600 border-slate-300 hover:border-blue-400 hover:text-blue-600"
-          }`}
+          className={`btn ${locked ? "btn-primary" : "btn-secondary"}`}
+          style={{ padding: "8px 16px", fontSize: 13 }}
         >
-          {locked ? <Lock size={12} /> : <Unlock size={12} />}
+          {locked ? <Lock size={13} /> : <Unlock size={13} />}
           {locked ? "固定を解除する" : "この内容で固定する"}
         </button>
       </div>
 
-      {/* ── Fields ─────────────────────────────── */}
+      {/* ── Fields ─────────────────────────── */}
       {open && (
-        <div className="px-5 pb-4 border-t border-slate-200">
-          {/* 固定中の説明 */}
+        <div style={{ borderTop: "1px solid var(--c-border)" }} className="px-6 pb-5">
           {locked && (
-            <p className="text-xs text-blue-600 pt-3 pb-2">
+            <p className="text-xs text-blue-500 pt-3 pb-1">
               固定中のため編集できません。「固定を解除する」を押すと変更できます。
             </p>
           )}
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4">
+
             {/* 免許証の色 */}
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">
-                免許証の色
-              </label>
-              {(() => {
-                const isCustom = !LICENSE_COLORS.includes(info.licenseColor);
-                return (
-                  <>
-                    <select
-                      value={isCustom ? "自由入力" : info.licenseColor}
-                      onChange={(e) => set("licenseColor", e.target.value === "自由入力" ? "" : e.target.value)}
-                      disabled={locked}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {LICENSE_COLORS.map((c) => <option key={c}>{c}</option>)}
-                      <option>自由入力</option>
-                    </select>
-                    {isCustom && (
-                      <input
-                        type="text"
-                        value={info.licenseColor}
-                        onChange={(e) => set("licenseColor", e.target.value)}
-                        disabled={locked}
-                        placeholder="自由に入力..."
-                        className="mt-1.5 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                      />
-                    )}
-                  </>
-                );
-              })()}
+              <label className="lbl">免許証の色</label>
+              <select
+                value={isLicenseCustom ? "自由入力" : info.licenseColor}
+                onChange={(e) => set("licenseColor", e.target.value === "自由入力" ? "" : e.target.value)}
+                disabled={locked}
+                className="field"
+              >
+                {LICENSE_COLORS.map((c) => <option key={c}>{c}</option>)}
+                <option>自由入力</option>
+              </select>
+              {isLicenseCustom && (
+                <input
+                  type="text"
+                  value={info.licenseColor}
+                  onChange={(e) => set("licenseColor", e.target.value)}
+                  disabled={locked}
+                  placeholder="自由に入力..."
+                  className="field mt-2"
+                />
+              )}
             </div>
 
             {/* 事故回数 */}
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">
-                事故回数（直近3年）
-              </label>
+              <label className="lbl">事故回数（直近3年）</label>
               <select
                 value={accidentFree ? "自由入力" : String(info.accidentCount)}
                 onChange={(e) => {
-                  if (e.target.value === "自由入力") {
-                    setAccidentFree(true);
-                  } else {
-                    setAccidentFree(false);
-                    set("accidentCount", Number(e.target.value));
-                  }
+                  if (e.target.value === "自由入力") { setAccidentFree(true); }
+                  else { setAccidentFree(false); set("accidentCount", Number(e.target.value)); }
                 }}
                 disabled={locked}
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="field"
               >
                 {ACCIDENT_OPTIONS.map((n) => (
                   <option key={n} value={String(n)}>{n}回</option>
@@ -156,28 +137,22 @@ export default function SharedInfoPanel({ info, locked, onUpdate, onToggleLock }
                   disabled={locked}
                   placeholder="回数を入力..."
                   min={0}
-                  className="mt-1.5 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="field mt-2"
                 />
               )}
             </div>
 
             {/* 現在の等級 */}
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">
-                現在の等級
-              </label>
+              <label className="lbl">現在の等級</label>
               <select
                 value={gradeFree ? "自由入力" : String(info.currentGrade)}
                 onChange={(e) => {
-                  if (e.target.value === "自由入力") {
-                    setGradeFree(true);
-                  } else {
-                    setGradeFree(false);
-                    set("currentGrade", Number(e.target.value));
-                  }
+                  if (e.target.value === "自由入力") { setGradeFree(true); }
+                  else { setGradeFree(false); set("currentGrade", Number(e.target.value)); }
                 }}
                 disabled={locked}
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="field"
               >
                 {GRADE_OPTIONS.map((n) => (
                   <option key={n} value={String(n)}>{n}等級</option>
@@ -192,31 +167,27 @@ export default function SharedInfoPanel({ info, locked, onUpdate, onToggleLock }
                   disabled={locked}
                   placeholder="等級を入力..."
                   min={1}
-                  className="mt-1.5 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="field mt-2"
                 />
               )}
             </div>
 
-            {/* 車種/型式 */}
+            {/* 車種 */}
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">
-                車種 / 型式（任意）
-              </label>
+              <label className="lbl">車種 / 型式（任意）</label>
               <input
                 type="text"
                 value={info.carModel}
                 onChange={(e) => set("carModel", e.target.value)}
                 disabled={locked}
                 placeholder="例: プリウス / ZVW50"
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="field"
               />
             </div>
 
             {/* 現在の走行距離 */}
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">
-                現在の走行距離
-              </label>
+              <label className="lbl">現在の走行距離</label>
               <div className="relative">
                 <input
                   type="number"
@@ -225,62 +196,51 @@ export default function SharedInfoPanel({ info, locked, onUpdate, onToggleLock }
                   disabled={locked}
                   placeholder="例: 50000"
                   min={0}
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="field"
+                  style={{ paddingRight: 40 }}
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none">km</span>
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-[var(--c-text-3)] pointer-events-none">
+                  km
+                </span>
               </div>
             </div>
 
-            {/* 1年間の予定走行距離 */}
+            {/* 年間予定走行距離 */}
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">
-                年間予定走行距離
-              </label>
-              {(() => {
-                const isCustom = !ANNUAL_MILEAGES.slice(0, -1).includes(info.annualMileage);
-                return (
-                  <>
-                    <select
-                      value={isCustom ? "自由入力" : info.annualMileage}
-                      onChange={(e) => {
-                        if (e.target.value !== "自由入力") {
-                          set("annualMileage", e.target.value);
-                        } else {
-                          set("annualMileage", "");
-                        }
-                      }}
-                      disabled={locked}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {ANNUAL_MILEAGES.map((m) => (
-                        <option key={m}>{m}</option>
-                      ))}
-                    </select>
-                    {isCustom && (
-                      <input
-                        type="text"
-                        value={info.annualMileage}
-                        onChange={(e) => set("annualMileage", e.target.value)}
-                        disabled={locked}
-                        placeholder="例: 12,000km"
-                        className="mt-1.5 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                      />
-                    )}
-                  </>
-                );
-              })()}
+              <label className="lbl">年間予定走行距離</label>
+              <select
+                value={isCustomMileage ? "自由入力" : info.annualMileage}
+                onChange={(e) => {
+                  if (e.target.value !== "自由入力") set("annualMileage", e.target.value);
+                  else set("annualMileage", "");
+                }}
+                disabled={locked}
+                className="field"
+              >
+                {ANNUAL_MILEAGES.map((m) => <option key={m}>{m}</option>)}
+              </select>
+              {isCustomMileage && (
+                <input
+                  type="text"
+                  value={info.annualMileage}
+                  onChange={(e) => set("annualMileage", e.target.value)}
+                  disabled={locked}
+                  placeholder="例: 12,000km"
+                  className="field mt-2"
+                />
+              )}
             </div>
           </div>
 
-          {/* 固定中のサマリー表示 */}
+          {/* Badge summary when locked */}
           {locked && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              <Badge label="免許" value={info.licenseColor} />
+            <div className="mt-4 flex flex-wrap gap-2">
+              {info.licenseColor  && <Badge label="免許" value={info.licenseColor} />}
               <Badge label="事故" value={`${info.accidentCount}回`} />
               <Badge label="等級" value={`${info.currentGrade}等級`} />
-              {info.carModel && <Badge label="車種" value={info.carModel} />}
-              {info.currentMileage > 0 && <Badge label="走行距離" value={`${info.currentMileage.toLocaleString()}km`} />}
-              <Badge label="年間走行" value={info.annualMileage} />
+              {info.carModel      && <Badge label="車種" value={info.carModel} />}
+              {info.currentMileage > 0 && <Badge label="走行" value={`${info.currentMileage.toLocaleString()}km`} />}
+              {info.annualMileage && <Badge label="年間走行" value={info.annualMileage} />}
             </div>
           )}
         </div>
@@ -291,8 +251,9 @@ export default function SharedInfoPanel({ info, locked, onUpdate, onToggleLock }
 
 function Badge({ label, value }: { label: string; value: string }) {
   return (
-    <span className="inline-flex items-center gap-1 text-xs bg-white border border-blue-200 text-blue-700 px-2.5 py-1 rounded-full">
-      <span className="font-medium text-blue-400">{label}:</span>
+    <span className="inline-flex items-center gap-1.5 text-xs border text-blue-700 px-3 py-1.5 rounded-full font-medium"
+      style={{ background: "var(--c-sky)", borderColor: "#BFDBFE" }}>
+      <span className="text-blue-400 font-semibold">{label}:</span>
       {value}
     </span>
   );

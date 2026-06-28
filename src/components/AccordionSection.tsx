@@ -14,22 +14,31 @@ export default function AccordionSection({ title, icon, defaultOpen = false, chi
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <div className="border border-slate-200/70 rounded-xl overflow-hidden shadow-sm">
+    <div className="card overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-slate-50 to-slate-100/50 hover:from-slate-100 hover:to-slate-50 transition-all duration-150"
+        className="w-full flex items-center justify-between px-6 py-4 hover:bg-blue-50/60 transition-colors duration-150"
       >
-        <span className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-          {icon}
-          {title}
+        <span className="flex items-center gap-3">
+          <span className="flex items-center justify-center w-8 h-8 rounded-xl bg-blue-50 text-blue-500 shrink-0">
+            {icon}
+          </span>
+          <span className="text-sm font-semibold text-[var(--c-text-1)]">{title}</span>
         </span>
         <ChevronDown
           size={16}
-          className={`text-slate-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          className={`text-[var(--c-text-3)] transition-transform duration-200 ${open ? "rotate-180" : ""}`}
         />
       </button>
-      {open && <div className="px-4 py-4 space-y-4 bg-white/80">{children}</div>}
+      {open && (
+        <div
+          className="px-6 py-5 space-y-4"
+          style={{ borderTop: "1px solid var(--c-border)" }}
+        >
+          {children}
+        </div>
+      )}
     </div>
   );
 }

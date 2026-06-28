@@ -1,12 +1,16 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { PlusCircle, Zap, ShieldCheck, Car, Wrench, FileText, ExternalLink, Pencil, X, Tag, Star, Check } from "lucide-react";
+import {
+  PlusCircle, Zap, ShieldCheck, Car, Wrench, FileText,
+  ExternalLink, Pencil, X, Tag, Star, Check,
+} from "lucide-react";
 import AccordionSection from "./AccordionSection";
 import type { InsurancePlan, SharedInfo } from "@/types/insurance";
 import { DEFAULT_PLAN, INSURANCE_COMPANIES } from "@/types/insurance";
 
 const CUSTOM_DEFAULT_KEY = "car-custom-default-plan-v1";
+const FREE_INPUT = "自由入力";
 
 type DefaultFields = Omit<typeof DEFAULT_PLAN, never>;
 
@@ -19,7 +23,6 @@ function loadCustomDefault(): DefaultFields {
 }
 
 function saveCustomDefault(form: FormState): void {
-  // company / premium / memo は保存しない
   const { company: _c, premium: _p, memo: _m, ...rest } = form;
   localStorage.setItem(CUSTOM_DEFAULT_KEY, JSON.stringify(rest));
 }
@@ -63,19 +66,18 @@ interface Props {
   onCancelEdit?: () => void;
 }
 
-const FREE_INPUT = "自由入力";
-
+/* ── FreeSelect ───────────────────────────────── */
 function FreeSelect({ label, value, onChange, options }: {
   label: string; value: string; onChange: (v: string) => void; options: string[];
 }) {
   const isCustom = !options.includes(value);
   return (
     <div>
-      <label className="block text-xs font-medium text-slate-500 mb-1">{label}</label>
+      <label className="lbl">{label}</label>
       <select
         value={isCustom ? FREE_INPUT : value}
         onChange={(e) => onChange(e.target.value === FREE_INPUT ? "" : e.target.value)}
-        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+        className="field"
       >
         {options.map((o) => <option key={o}>{o}</option>)}
         <option>{FREE_INPUT}</option>
@@ -86,57 +88,56 @@ function FreeSelect({ label, value, onChange, options }: {
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder="自由に入力..."
-          className="mt-1.5 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+          className="field mt-2"
+          style={{ borderColor: "#3B82F6", boxShadow: "0 0 0 3px rgba(59,130,246,0.12)" }}
         />
       )}
     </div>
   );
 }
 
+/* ── Toggle ───────────────────────────────────── */
 function Toggle({ label, checked, onChange }: {
   label: string; checked: boolean; onChange: (v: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between py-1">
-      <span className="text-sm text-slate-700">{label}</span>
+    <div className="flex items-center justify-between py-3">
+      <span className="text-sm text-[var(--c-text-1)]">{label}</span>
       <button
         type="button"
         onClick={() => onChange(!checked)}
-        className={`w-11 h-6 rounded-full relative overflow-hidden transition-colors duration-200 ${checked ? "bg-blue-500" : "bg-slate-300"}`}
+        className={`relative w-12 h-6 rounded-full overflow-hidden transition-colors duration-200 shrink-0 ${
+          checked ? "bg-blue-500" : "bg-slate-200"
+        }`}
       >
-        <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${checked ? "translate-x-5" : "translate-x-0"}`} />
+        <span
+          className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${
+            checked ? "translate-x-6" : "translate-x-0"
+          }`}
+        />
       </button>
     </div>
   );
 }
 
+/* ── Main Component ───────────────────────────── */
 export default function InsuranceForm({
-  onAdd,
-  sharedInfo,
-  sharedInfoLocked,
-  editingPlan,
-  onUpdate,
-  onCancelEdit,
+  onAdd, sharedInfo, sharedInfoLocked, editingPlan, onUpdate, onCancelEdit,
 }: Props) {
   const isEditing = !!editingPlan;
   const formRef = useRef<HTMLDivElement>(null);
 
-  const [form, setForm] = useState<FormState>(emptyForm(sharedInfo.currentGrade));
+  const [form, setForm]                     = useState<FormState>(emptyForm(sharedInfo.currentGrade));
   const [selectedCompanyName, setSelectedCompanyName] = useState("");
-  const [customCompany, setCustomCompany] = useState("");
-  const [errors,       setErrors]       = useState<Partial<Record<keyof FormState | "companySelect", string>>>({});
-  const [savedDefault, setSavedDefault] = useState(false);
+  const [customCompany, setCustomCompany]   = useState("");
+  const [errors, setErrors]                 = useState<Partial<Record<keyof FormState | "companySelect", string>>>({});
+  const [savedDefault, setSavedDefault]     = useState(false);
 
-  // editingPlan が入ってきたらフォームに展開してスクロール
   useEffect(() => {
     if (!editingPlan) return;
-
     const { id: _id, sharedInfoSnapshot: _snap, ...rest } = editingPlan;
     setForm(rest);
-
-    const known = INSURANCE_COMPANIES.find(
-      (c) => c.name === editingPlan.company && c.name !== "その他"
-    );
+    const known = INSURANCE_COMPANIES.find((c) => c.name === editingPlan.company && c.name !== "その他");
     if (known) {
       setSelectedCompanyName(known.name);
       setCustomCompany("");
@@ -145,10 +146,7 @@ export default function InsuranceForm({
       setCustomCompany(editingPlan.company);
     }
     setErrors({});
-
-    setTimeout(() => {
-      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 50);
+    setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
   }, [editingPlan]);
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) =>
@@ -171,8 +169,7 @@ export default function InsuranceForm({
   const applyDefaults = () => {
     const defaults = loadCustomDefault();
     setForm((f) => ({
-      ...f,
-      ...defaults,
+      ...f, ...defaults,
       grade: sharedInfoLocked ? sharedInfo.currentGrade : defaults.grade,
     }));
   };
@@ -205,40 +202,38 @@ export default function InsuranceForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
-
     if (isEditing && onUpdate) {
       onUpdate({ ...form, id: editingPlan!.id, sharedInfoSnapshot: editingPlan!.sharedInfoSnapshot });
     } else {
-      onAdd({
-        ...form,
-        id: crypto.randomUUID(),
-        sharedInfoSnapshot: sharedInfoLocked ? sharedInfo : undefined,
-      });
+      onAdd({ ...form, id: crypto.randomUUID(), sharedInfoSnapshot: sharedInfoLocked ? sharedInfo : undefined });
     }
     resetForm();
   };
 
-  const handleCancel = () => {
-    resetForm();
-    onCancelEdit?.();
-  };
+  const handleCancel = () => { resetForm(); onCancelEdit?.(); };
+
+  /* grade free-text helpers */
+  const gradeOpts = Array.from({ length: 20 }, (_, i) => String(i + 1));
+  const isCustomGrade = !gradeOpts.includes(String(form.grade));
 
   return (
     <div
       ref={formRef}
-      className={`rounded-2xl border p-6 transition-colors duration-200 ${
-        isEditing
-          ? "bg-amber-50 border-amber-300 shadow-[0_4px_24px_-4px_rgba(245,158,11,0.2)]"
-          : "bg-white border-slate-200/80 shadow-md"
-      }`}
+      className="card p-7 transition-all duration-300"
+      style={isEditing ? {
+        borderColor: "#F59E0B",
+        boxShadow: "0 0 0 3px rgba(245,158,11,0.15), var(--sh-md)",
+        background: "#FFFBEB",
+      } : {}}
     >
-      <div className="flex items-center justify-between mb-5">
-        <h2 className="text-base font-semibold text-slate-700 flex items-center gap-2">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-base font-bold text-[var(--c-text-1)] flex items-center gap-2.5">
           {isEditing ? (
             <>
               <Pencil size={18} className="text-amber-500" />
               プランを編集中
-              <span className="text-xs font-medium text-amber-700 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
+              <span className="text-xs font-semibold text-amber-700 bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-full">
                 {editingPlan!.company}
               </span>
             </>
@@ -253,46 +248,35 @@ export default function InsuranceForm({
           <button
             type="button"
             onClick={handleSaveDefault}
-            className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition ${
-              savedDefault
-                ? "bg-emerald-500 text-white border-emerald-500"
-                : "text-slate-500 hover:text-slate-700 border-slate-200 hover:border-slate-400"
-            }`}
-            title="現在のフォームの設定内容を標準設定として保存します"
+            className={`btn btn-ghost ${savedDefault ? "!bg-emerald-50 !text-emerald-600 !border-emerald-200" : ""}`}
           >
-            {savedDefault ? <Check size={12} /> : <Star size={12} />}
+            {savedDefault ? <Check size={13} /> : <Star size={13} />}
             {savedDefault ? "保存しました" : "標準設定を更新"}
           </button>
-          <button
-            type="button"
-            onClick={applyDefaults}
-            className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 border border-blue-200 hover:border-blue-400 px-3 py-1.5 rounded-lg transition"
-          >
-            <Zap size={12} />
+          <button type="button" onClick={applyDefaults} className="btn btn-ghost">
+            <Zap size={13} className="text-blue-500" />
             標準設定を適用
           </button>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} noValidate className="space-y-3">
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
 
-        {/* 基本構成 */}
-        <AccordionSection title="基本構成" icon={<ShieldCheck size={15} className="text-blue-500" />} defaultOpen>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* ── 基本構成 ──────────────────────── */}
+        <AccordionSection title="基本構成" icon={<ShieldCheck size={15} />} defaultOpen>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-            {/* 保険会社選択 */}
+            {/* 保険会社 */}
             <div className="sm:col-span-2">
-              <label className="block text-xs font-medium text-slate-500 mb-1">
-                保険会社 <span className="text-red-400">*</span>
+              <label className="lbl">
+                保険会社 <span className="text-red-400 font-normal">*</span>
               </label>
               <div className="flex gap-2 items-start">
                 <div className="flex-1">
                   <select
                     value={selectedCompanyName}
                     onChange={(e) => handleCompanyChange(e.target.value)}
-                    className={`w-full border rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white ${
-                      errors.companySelect ? "border-red-400 bg-red-50" : "border-slate-300"
-                    }`}
+                    className={`field ${errors.companySelect ? "!border-red-400" : ""}`}
                   >
                     <option value="">-- 保険会社を選択 --</option>
                     {INSURANCE_COMPANIES.map((c) => (
@@ -300,7 +284,7 @@ export default function InsuranceForm({
                     ))}
                   </select>
                   {errors.companySelect && (
-                    <p className="text-red-500 text-xs mt-1">{errors.companySelect}</p>
+                    <p className="text-red-500 text-xs mt-1.5">{errors.companySelect}</p>
                   )}
                 </div>
                 {selectedMeta?.url && !isOther && (
@@ -308,9 +292,10 @@ export default function InsuranceForm({
                     href={selectedMeta.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 border border-blue-200 hover:border-blue-400 px-3 py-2.5 rounded-lg transition whitespace-nowrap"
+                    className="btn btn-secondary h-[50px] text-xs text-blue-600 border-blue-200 hover:border-blue-400"
+                    style={{ paddingLeft: 14, paddingRight: 14 }}
                   >
-                    <ExternalLink size={12} />
+                    <ExternalLink size={13} />
                     公式サイト
                   </a>
                 )}
@@ -321,26 +306,28 @@ export default function InsuranceForm({
                   value={customCompany}
                   onChange={(e) => handleCustomChange(e.target.value)}
                   placeholder="保険会社名を入力..."
-                  className="mt-2 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="field mt-2"
                 />
               )}
               {selectedMeta && (
-                <div className="mt-2 flex items-center gap-2">
+                <div className="mt-3 flex items-center gap-2.5">
                   <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0"
+                    className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-xs font-bold shrink-0"
                     style={{ backgroundColor: selectedMeta.color }}
                   >
                     {selectedMeta.initial}
                   </div>
-                  <span className="text-sm text-slate-600">{isOther ? customCompany || "その他" : selectedMeta.name}</span>
+                  <span className="text-sm text-[var(--c-text-2)]">
+                    {isOther ? customCompany || "その他" : selectedMeta.name}
+                  </span>
                 </div>
               )}
             </div>
 
             {/* 年間保険料 */}
             <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">
-                年間保険料（円） <span className="text-red-400">*</span>
+              <label className="lbl">
+                年間保険料（円） <span className="text-red-400 font-normal">*</span>
               </label>
               <input
                 type="number"
@@ -348,15 +335,14 @@ export default function InsuranceForm({
                 onChange={(e) => set("premium", Number(e.target.value))}
                 placeholder="例: 80000"
                 min={1}
-                className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 ${
-                  errors.premium ? "border-red-400 bg-red-50" : "border-slate-300"
-                }`}
+                className={`field ${errors.premium ? "!border-red-400" : ""}`}
               />
-              {errors.premium && <p className="text-red-500 text-xs mt-1">{errors.premium}</p>}
+              {errors.premium && <p className="text-red-500 text-xs mt-1.5">{errors.premium}</p>}
             </div>
 
+            {/* 等級 */}
             <div>
-              <label className="flex items-center gap-1.5 text-xs font-medium text-slate-500 mb-1">
+              <label className="lbl flex items-center gap-2">
                 等級
                 {sharedInfoLocked && !isEditing && (
                   <span className="text-blue-500 text-[10px] font-semibold bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded-full">
@@ -364,39 +350,30 @@ export default function InsuranceForm({
                   </span>
                 )}
               </label>
-              {(() => {
-                const gradeOpts = Array.from({ length: 20 }, (_, i) => String(i + 1));
-                const isCustomGrade = !gradeOpts.includes(String(form.grade));
-                return (
-                  <>
-                    <select
-                      value={isCustomGrade ? FREE_INPUT : String(form.grade)}
-                      onChange={(e) => {
-                        if (e.target.value === FREE_INPUT) {
-                          set("grade", 0);
-                        } else {
-                          set("grade", Number(e.target.value));
-                        }
-                      }}
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
-                    >
-                      {gradeOpts.map((o) => <option key={o}>{o}</option>)}
-                      <option>{FREE_INPUT}</option>
-                    </select>
-                    {isCustomGrade && (
-                      <input
-                        type="number"
-                        value={form.grade || ""}
-                        onChange={(e) => set("grade", Number(e.target.value))}
-                        placeholder="等級を入力..."
-                        min={1}
-                        className="mt-1.5 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                      />
-                    )}
-                  </>
-                );
-              })()}
+              <select
+                value={isCustomGrade ? FREE_INPUT : String(form.grade)}
+                onChange={(e) => {
+                  if (e.target.value === FREE_INPUT) set("grade", 0);
+                  else set("grade", Number(e.target.value));
+                }}
+                className="field"
+              >
+                {gradeOpts.map((o) => <option key={o}>{o}</option>)}
+                <option>{FREE_INPUT}</option>
+              </select>
+              {isCustomGrade && (
+                <input
+                  type="number"
+                  value={form.grade || ""}
+                  onChange={(e) => set("grade", Number(e.target.value))}
+                  placeholder="等級を入力..."
+                  min={1}
+                  className="field mt-2"
+                  style={{ borderColor: "#3B82F6", boxShadow: "0 0 0 3px rgba(59,130,246,0.12)" }}
+                />
+              )}
             </div>
+
             <FreeSelect
               label="年齢条件"
               value={form.ageCondition}
@@ -412,9 +389,9 @@ export default function InsuranceForm({
           </div>
         </AccordionSection>
 
-        {/* 補償内容 */}
-        <AccordionSection title="補償内容" icon={<ShieldCheck size={15} className="text-emerald-500" />}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {/* ── 補償内容 ──────────────────────── */}
+        <AccordionSection title="補償内容" icon={<ShieldCheck size={15} />}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FreeSelect label="対人賠償" value={form.liabilityPerson} onChange={(v) => set("liabilityPerson", v)}
               options={["無制限", "1億円", "5000万円", "3000万円", "なし"]} />
             <FreeSelect label="対物賠償" value={form.liabilityProperty} onChange={(v) => set("liabilityProperty", v)}
@@ -428,21 +405,21 @@ export default function InsuranceForm({
           </div>
         </AccordionSection>
 
-        {/* 車両保険 */}
-        <AccordionSection title="車両保険" icon={<Car size={15} className="text-violet-500" />}>
+        {/* ── 車両保険 ──────────────────────── */}
+        <AccordionSection title="車両保険" icon={<Car size={15} />}>
           <Toggle label="車両保険" checked={form.vehicleInsurance} onChange={(v) => set("vehicleInsurance", v)} />
           {form.vehicleInsurance && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2 pt-3 border-t border-slate-100">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-1 pt-4" style={{ borderTop: "1px solid var(--c-border)" }}>
               <FreeSelect label="種類" value={form.vehicleType} onChange={(v) => set("vehicleType", v)}
                 options={["一般", "エコノミー"]} />
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">車両保険金額（円）</label>
+                <label className="lbl">車両保険金額（円）</label>
                 <input
                   type="number"
                   value={form.vehicleAmount}
                   onChange={(e) => set("vehicleAmount", e.target.value)}
                   placeholder="例: 1500000"
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  className="field"
                 />
               </div>
               <FreeSelect label="免責金額" value={form.vehicleDeductible} onChange={(v) => set("vehicleDeductible", v)}
@@ -451,59 +428,64 @@ export default function InsuranceForm({
           )}
         </AccordionSection>
 
-        {/* その他特約 */}
-        <AccordionSection title="その他の特約" icon={<Wrench size={15} className="text-amber-500" />}>
-          <div className="divide-y divide-slate-100">
-            <Toggle label="弁護士費用特約"       checked={form.legalSupport}      onChange={(v) => set("legalSupport", v)} />
-            <Toggle label="ロードサービス"        checked={form.roadService}       onChange={(v) => set("roadService", v)} />
-            <Toggle label="ファミリーバイク特約"  checked={form.familyBike}        onChange={(v) => set("familyBike", v)} />
-            <Toggle label="個人賠償責任特約"      checked={form.personalLiability} onChange={(v) => set("personalLiability", v)} />
-            <Toggle label="無保険車傷害"          checked={form.uninsuredCar}      onChange={(v) => set("uninsuredCar", v)} />
+        {/* ── その他特約 ────────────────────── */}
+        <AccordionSection title="その他の特約" icon={<Wrench size={15} />}>
+          <div style={{ borderRadius: 12, border: "1px solid var(--c-border)", overflow: "hidden" }}>
+            {[
+              { label: "弁護士費用特約",      key: "legalSupport"      as const },
+              { label: "ロードサービス",       key: "roadService"       as const },
+              { label: "ファミリーバイク特約", key: "familyBike"        as const },
+              { label: "個人賠償責任特約",     key: "personalLiability" as const },
+              { label: "無保険車傷害",         key: "uninsuredCar"      as const },
+            ].map(({ label, key }, i) => (
+              <div key={key} style={i > 0 ? { borderTop: "1px solid var(--c-border)" } : {}}>
+                <Toggle label={label} checked={form[key]} onChange={(v) => set(key, v)} />
+              </div>
+            ))}
           </div>
         </AccordionSection>
 
-        {/* 割引 */}
-        <AccordionSection title="割引" icon={<Tag size={15} className="text-pink-500" />}>
-          <div className="divide-y divide-slate-100">
-            <Toggle label="インターネット割引"     checked={form.internetDiscount}   onChange={(v) => set("internetDiscount", v)} />
-            <Toggle label="証券不発行割引"         checked={form.paperlessDiscount}  onChange={(v) => set("paperlessDiscount", v)} />
-            <Toggle label="早期割引"               checked={form.earlyDiscount}      onChange={(v) => set("earlyDiscount", v)} />
-            <Toggle label="複数台割引"             checked={form.multiCarDiscount}   onChange={(v) => set("multiCarDiscount", v)} />
-            <Toggle label="テレマティクス割引"     checked={form.telematicsDiscount} onChange={(v) => set("telematicsDiscount", v)} />
+        {/* ── 割引 ──────────────────────────── */}
+        <AccordionSection title="割引" icon={<Tag size={15} />}>
+          <div style={{ borderRadius: 12, border: "1px solid var(--c-border)", overflow: "hidden" }}>
+            {[
+              { label: "インターネット割引",   key: "internetDiscount"   as const },
+              { label: "証券不発行割引",       key: "paperlessDiscount"  as const },
+              { label: "早期割引",             key: "earlyDiscount"      as const },
+              { label: "複数台割引",           key: "multiCarDiscount"   as const },
+              { label: "テレマティクス割引",   key: "telematicsDiscount" as const },
+            ].map(({ label, key }, i) => (
+              <div key={key} style={i > 0 ? { borderTop: "1px solid var(--c-border)" } : {}}>
+                <Toggle label={label} checked={form[key]} onChange={(v) => set(key, v)} />
+              </div>
+            ))}
           </div>
         </AccordionSection>
 
-        {/* メモ */}
-        <AccordionSection title="メモ" icon={<FileText size={15} className="text-slate-400" />}>
+        {/* ── メモ ──────────────────────────── */}
+        <AccordionSection title="メモ" icon={<FileText size={15} />}>
           <textarea
             value={form.memo}
             onChange={(e) => set("memo", e.target.value)}
             placeholder="補償内容の特徴など自由に記入..."
             rows={3}
-            className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+            className="field"
           />
         </AccordionSection>
 
-        <div className="flex justify-end gap-2 pt-2">
+        {/* ── Actions ───────────────────────── */}
+        <div className="flex justify-end gap-3 pt-2">
           {isEditing && (
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-600 font-semibold text-sm px-5 py-2.5 rounded-xl border border-slate-300 transition"
-            >
-              <X size={15} />
+            <button type="button" onClick={handleCancel} className="btn btn-secondary">
+              <X size={14} />
               キャンセル
             </button>
           )}
           <button
             type="submit"
-            className={`flex items-center gap-2 text-white font-semibold text-sm px-5 py-2.5 rounded-xl transition shadow-sm ${
-              isEditing
-                ? "bg-amber-500 hover:bg-amber-600"
-                : "bg-blue-600 hover:bg-blue-700"
-            }`}
+            className={`btn ${isEditing ? "btn-amber" : "btn-primary"}`}
           >
-            {isEditing ? <Pencil size={15} /> : <PlusCircle size={16} />}
+            {isEditing ? <Pencil size={14} /> : <PlusCircle size={15} />}
             {isEditing ? "変更を保存する" : "追加する"}
           </button>
         </div>

@@ -1,29 +1,202 @@
 @import "tailwindcss";
 
+/* ── Design Tokens ──────────────────────────────── */
+:root {
+  --c-navy:      #1E3A8A;
+  --c-blue:      #3B82F6;
+  --c-sky:       #EFF6FF;
+
+  --c-bg:        #F8FAFC;
+  --c-surface:   #FFFFFF;
+  --c-text-1:    #0F172A;
+  --c-text-2:    #475569;
+  --c-text-3:    #94A3B8;
+  --c-border:    #E2E8F0;
+  --c-border-hi: #CBD5E1;
+
+  --sh-sm:    0 2px 8px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --sh-md:    0 4px 20px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+  --sh-lg:    0 8px 36px rgba(0,0,0,0.10), 0 4px 12px rgba(0,0,0,0.05);
+  --sh-xl:    0 20px 56px rgba(0,0,0,0.11), 0 8px 20px rgba(0,0,0,0.06);
+  --sh-focus: 0 0 0 3px rgba(59,130,246,0.18);
+
+  --r-input:  12px;
+  --r-card:   20px;
+  --ease:     cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Dark Mode ──────────────────────────────────── */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --c-bg:        #060D1A;
+    --c-surface:   #0D1A2E;
+    --c-text-1:    #EEF2FF;
+    --c-text-2:    #748BAE;
+    --c-text-3:    #3D5270;
+    --c-border:    #162336;
+    --c-border-hi: #1E3048;
+    --sh-md: 0 4px 20px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.25);
+    --sh-lg: 0 8px 36px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3);
+  }
+}
+
+/* ── Base ───────────────────────────────────────── */
+html { scroll-behavior: smooth; }
+
 body {
-  background: linear-gradient(150deg, #f8fafc 0%, #eff6ff 55%, #f5f3ff 100%);
+  background-color: var(--c-bg);
+  color: var(--c-text-1);
+  font-family: -apple-system, BlinkMacSystemFont,
+    "Hiragino Sans", "Hiragino Kaku Gothic ProN",
+    "Yu Gothic Medium", "Noto Sans JP", sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
 }
 
+/* ── Animations ─────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.fade-up { animation: fadeUp 0.45s var(--ease) both; }
+.d1 { animation-delay: 0.06s; }
+.d2 { animation-delay: 0.12s; }
+.d3 { animation-delay: 0.18s; }
+.d4 { animation-delay: 0.24s; }
+.d5 { animation-delay: 0.30s; }
+
+/* ── Card ───────────────────────────────────────── */
+.card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-card);
+  box-shadow: var(--sh-md);
+}
+
+/* ── Field (input / select / textarea) ─────────── */
+.field {
+  width: 100%;
+  height: 50px;
+  padding: 0 14px;
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--r-input);
+  background: var(--c-surface);
+  color: var(--c-text-1);
+  font-size: 15px;
+  font-family: inherit;
+  transition: border-color 150ms var(--ease), box-shadow 150ms var(--ease);
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.field:focus {
+  border-color: var(--c-blue);
+  box-shadow: var(--sh-focus);
+}
+.field::placeholder { color: var(--c-text-3); }
+.field:disabled     { opacity: 0.45; cursor: not-allowed; }
+
+select.field {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 40px;
+}
+textarea.field {
+  height: auto;
+  min-height: 90px;
+  padding: 13px 14px;
+  resize: none;
+  line-height: 1.6;
+}
+
+/* ── Buttons ────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  border-radius: var(--r-input);
+  padding: 11px 22px;
+  border: none;
+  cursor: pointer;
+  transition: all 150ms var(--ease);
+  white-space: nowrap;
+}
+.btn:active { transform: scale(0.97); }
+
+.btn-primary {
+  background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(59,130,246,0.38);
+}
+.btn-primary:hover {
+  box-shadow: 0 8px 22px rgba(59,130,246,0.48);
+  transform: translateY(-1px);
+}
+.btn-primary:active { transform: scale(0.97); box-shadow: 0 2px 8px rgba(59,130,246,0.3); }
+
+.btn-amber {
+  background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(245,158,11,0.35);
+}
+.btn-amber:hover {
+  box-shadow: 0 8px 22px rgba(245,158,11,0.45);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--c-surface);
+  color: var(--c-text-2);
+  border: 1.5px solid var(--c-border);
+}
+.btn-secondary:hover { border-color: var(--c-border-hi); color: var(--c-text-1); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--c-text-2);
+  border: 1.5px solid transparent;
+  padding: 8px 14px;
+  font-size: 13px;
+}
+.btn-ghost:hover { background: var(--c-sky); color: var(--c-blue); border-color: #DBEAFE; }
+
+/* ── Label ──────────────────────────────────────── */
+.lbl {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text-2);
+  margin-bottom: 7px;
+  letter-spacing: 0.01em;
+}
+
+/* ── Print ──────────────────────────────────────── */
 @media print {
   @page { margin: 15mm 10mm; }
-
+  body { background: #fff !important; color: #000 !important; }
   body::before {
-    content: "自動車保険 比較結果";
+    content: "くるまくらべメモ - 自動車保険比較結果";
     display: block;
     font-size: 18px;
     font-weight: bold;
     margin-bottom: 12px;
     color: #1e293b;
   }
-
   table { border-collapse: collapse !important; }
   th, td { border: 1px solid #e2e8f0 !important; }
   tr { page-break-inside: avoid; }
-
-  .shadow-sm, .rounded-2xl, .rounded-xl {
-    box-shadow: none !important;
-    border-radius: 4px !important;
-  }
   .overflow-x-auto { overflow: visible !important; }
 }
