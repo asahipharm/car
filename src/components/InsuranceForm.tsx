@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   PlusCircle, Zap, ShieldCheck, Car, Wrench, FileText,
-  ExternalLink, Pencil, X, Tag, Star, Check,
+  ExternalLink, Pencil, X, Tag, Star, Check, Upload,
 } from "lucide-react";
 import AccordionSection from "./AccordionSection";
 import type { InsurancePlan, SharedInfo } from "@/types/insurance";
@@ -80,6 +80,101 @@ interface Props {
   onCancelEdit?: () => void;
 }
 
+/* ── CSV parser ───────────────────────────────── */
+function parseCSVToForm(csvText: string): Partial<FormState> {
+  // Build item→value map from カテゴリ,項目,内容 format
+  const data = new Map<string, string>();
+  const lines = csvText.trim().split(/\r?\n/);
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const c1 = line.indexOf(",");
+    if (c1 === -1) continue;
+    const c2 = line.indexOf(",", c1 + 1);
+    if (c2 === -1) continue;
+    const item  = line.substring(c1 + 1, c2).trim();
+    const value = line.substring(c2 + 1).trim();
+    if (item) data.set(item, value);
+  }
+
+  const get  = (k: string) => data.get(k) ?? "";
+  // "なし" or empty → false, everything else → true
+  const bool = (k: string) => { const v = get(k); return data.has(k) ? (v !== "なし" && v !== "") : undefined; };
+
+  const result: Partial<FormState> = {};
+
+  // 基本構成
+  const company = get("申込経路");
+  if (company) result.company = company;
+
+  const premiumStr = get("年払保険料") || get("月払保険料");
+  if (premiumStr) {
+    const n = parseInt(premiumStr.replace(/[^\d]/g, ""), 10);
+    if (n > 0) result.premium = n;
+  }
+
+  const gradeStr = get("ノンフリート等級");
+  if (gradeStr) {
+    const g = parseInt(gradeStr, 10);
+    if (g > 0) result.grade = g;
+  }
+
+  const accp = get("事故有係数適用期間");
+  if (accp) result.accidentCoeffPeriod = accp;
+
+  const age = get("年齢条件");
+  if (age) result.ageCondition = age.replace(/補償$/, "").trim();
+
+  const scope = get("運転者の範囲") || get("運転者限定");
+  if (scope) {
+    if      (scope.includes("配偶者"))                           result.drivingScope = "本人＋配偶者";
+    else if (scope.includes("家族"))                             result.drivingScope = "本人＋家族";
+    else if (scope.includes("本人") && /のみ|限定/.test(scope)) result.drivingScope = "本人のみ";
+    else if (/限定しない|限定なし|なし/.test(scope))            result.drivingScope = "限定しない";
+    else                                                         result.drivingScope = scope;
+  }
+
+  // 補償内容
+  const lp = get("対人賠償保険"); if (lp) result.liabilityPerson = lp;
+  const lpr = get("対物賠償保険"); if (lpr) result.liabilityProperty = lpr;
+  const per = bool("対物超過修理費用特約"); if (per !== undefined) result.propertyExcessRepair = per;
+  const pi = get("人身傷害保険金額"); if (pi) result.personalInjury = pi;
+  const pass = get("搭乗者傷害保険"); if (pass) result.passengerInjury = pass;
+  const uc = bool("無保険車傷害保険"); if (uc !== undefined) result.uninsuredCar = uc;
+  const sca = bool("自損事故傷害保険"); if (sca !== undefined) result.singleCarAccident = sca;
+
+  // 車両保険
+  const vi = bool("車両保険"); if (vi !== undefined) result.vehicleInsurance = vi;
+  const va = get("車両保険金額"); if (va) result.vehicleAmount = va;
+  const vt = get("車両保険種類") || get("車両保険タイプ"); if (vt) result.vehicleType = vt;
+  const vnc = bool("新車特約"); if (vnc !== undefined) result.vehicleNewCar = vnc;
+  const vtl = bool("全損時諸費用保険金特約"); if (vtl !== undefined) result.vehicleTotalLoss = vtl;
+  const vtr = bool("車両盗難時レンタカー費用特約"); if (vtr !== undefined) result.vehicleTheftRental = vtr;
+  const vrep = bool("車両新価特約"); if (vrep !== undefined) result.vehicleReplacement = vrep;
+
+  // その他特約
+  const ls = bool("弁護士費用特約"); if (ls !== undefined) result.legalSupport = ls;
+  const rs = bool("ロードサービス特約") ?? bool("ロードサービス"); if (rs !== undefined) result.roadService = rs;
+  const fb = bool("ファミリーバイク特約"); if (fb !== undefined) result.familyBike = fb;
+  const pl = bool("個人賠償責任危険補償特約") ?? bool("個人賠償責任特約"); if (pl !== undefined) result.personalLiability = pl;
+  const ovc = bool("他の自動車運転危険補償特約"); if (ovc !== undefined) result.otherVehicleCoverage = ovc;
+  const vr = bool("被害者救済費用等補償特約"); if (vr !== undefined) result.victimRelief = vr;
+  const hgr = bool("自宅・車庫等修理費用補償特約"); if (hgr !== undefined) result.homeGarageRepair = hgr;
+  const ba = bool("自転車事故補償特約"); if (ba !== undefined) result.bicycleAccident = ba;
+  const pb = get("車内外身の回り品補償特約"); if (pb) result.personalBelongings = pb;
+
+  // 割引
+  const id = bool("インターネット割引"); if (id !== undefined) result.internetDiscount = id;
+  const pd = bool("証券不発行割引") ?? bool("ペーパーレス割引"); if (pd !== undefined) result.paperlessDiscount = pd;
+  const ed = bool("早期申込割引") ?? bool("早期割引"); if (ed !== undefined) result.earlyDiscount = ed;
+  const md = bool("複数台割引") ?? bool("セカンドカー割引"); if (md !== undefined) result.multiCarDiscount = md;
+  const td = bool("テレマティクス割引"); if (td !== undefined) result.telematicsDiscount = td;
+  const ncd = bool("新車割引"); if (ncd !== undefined) result.newCarDiscount = ncd;
+  const ssd = bool("セーフティ・サポートカー割引") ?? bool("ASV割引"); if (ssd !== undefined) result.safetySupportDiscount = ssd;
+
+  return result;
+}
+
 /* ── FreeSelect ───────────────────────────────── */
 function FreeSelect({ label, value, onChange, options }: {
   label: string; value: string; onChange: (v: string) => void; options: string[];
@@ -139,7 +234,8 @@ export default function InsuranceForm({
   onAdd, sharedInfo, sharedInfoLocked, editingPlan, onUpdate, onCancelEdit,
 }: Props) {
   const isEditing = !!editingPlan;
-  const formRef = useRef<HTMLDivElement>(null);
+  const formRef    = useRef<HTMLDivElement>(null);
+  const csvFileRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm]                     = useState<FormState>(emptyForm(sharedInfo.currentGrade));
   const [selectedCompanyName, setSelectedCompanyName] = useState("");
@@ -226,6 +322,30 @@ export default function InsuranceForm({
 
   const handleCancel = () => { resetForm(); onCancelEdit?.(); };
 
+  const handleCSVImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const parsed = parseCSVToForm(text);
+      setForm((f) => ({ ...f, ...parsed }));
+      // Sync company selector state
+      if (parsed.company) {
+        const known = INSURANCE_COMPANIES.find((c) => c.name === parsed.company && c.name !== "その他");
+        if (known) {
+          setSelectedCompanyName(known.name);
+          setCustomCompany("");
+        } else {
+          setSelectedCompanyName("その他");
+          setCustomCompany(parsed.company);
+        }
+      }
+    };
+    reader.readAsText(file, "UTF-8");
+    e.target.value = "";
+  };
+
   /* grade free-text helpers */
   const gradeOpts = Array.from({ length: 20 }, (_, i) => String(i + 1));
   const isCustomGrade = !gradeOpts.includes(String(form.grade));
@@ -259,6 +379,22 @@ export default function InsuranceForm({
           )}
         </h2>
         <div className="flex items-center gap-2">
+          <input
+            ref={csvFileRef}
+            type="file"
+            accept=".csv,text/csv"
+            onChange={handleCSVImport}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => csvFileRef.current?.click()}
+            className="btn btn-ghost"
+            title="CSVファイルから項目を一括入力"
+          >
+            <Upload size={13} className="text-blue-500" />
+            CSVから取り込む
+          </button>
           <button
             type="button"
             onClick={handleSaveDefault}
