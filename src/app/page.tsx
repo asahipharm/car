@@ -20,18 +20,22 @@ const FEATURES = [
 export default function Home() {
   const [plans, setPlans] = useState<InsurancePlan[]>([]);
   const [editingPlan, setEditingPlan] = useState<InsurancePlan | null>(null);
+  const [plansLoaded, setPlansLoaded] = useState(false);
   const { info, update, locked, toggleLocked } = useSharedInfo();
 
+  // 読み込みを先に完了させてからでないと保存しない
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) setPlans(JSON.parse(saved));
     } catch { /* ignore */ }
+    setPlansLoaded(true);
   }, []);
 
   useEffect(() => {
+    if (!plansLoaded) return; // 読み込み完了前は保存しない
     localStorage.setItem(STORAGE_KEY, JSON.stringify(plans));
-  }, [plans]);
+  }, [plans, plansLoaded]);
 
   const handleAdd = (plan: InsurancePlan) => setPlans((prev) => [...prev, plan]);
 
