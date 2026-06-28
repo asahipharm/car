@@ -222,17 +222,17 @@ export default function SharedInfoPanel({ info, locked, onUpdate, onToggleLock }
               </div>
             </div>
 
-            {/* 初度登録年月 */}
-            <div>
+            {/* 初度登録年月 — 年ラベルが長いので常に2カラム幅を確保 */}
+            <div className="col-span-2 sm:col-span-2">
               <label className="lbl">初度登録年月</label>
               <div className="flex gap-2">
                 <select
                   value={info.registrationYear || ""}
                   onChange={(e) => set("registrationYear", Number(e.target.value))}
                   disabled={locked}
-                  className="field flex-1 min-w-0"
+                  className="field flex-1"
                 >
-                  <option value="">-- 年 --</option>
+                  <option value="">-- 年を選択 --</option>
                   {REGISTRATION_YEARS.map((y) => (
                     <option key={y} value={y}>{toWareki(y)}</option>
                   ))}
@@ -242,7 +242,7 @@ export default function SharedInfoPanel({ info, locked, onUpdate, onToggleLock }
                   onChange={(e) => set("registrationMonth", Number(e.target.value))}
                   disabled={locked}
                   className="field"
-                  style={{ width: 84, flexShrink: 0 }}
+                  style={{ width: 96, flexShrink: 0 }}
                 >
                   <option value="">-- 月 --</option>
                   {MONTHS.map((m) => (
