@@ -35,25 +35,39 @@ const emptyForm = (grade = 6): FormState => ({
   grade,
   ageCondition: "26歳以上",
   drivingScope: "限定しない",
+  accidentCoeffPeriod: "0年",
   liabilityPerson: "無制限",
   liabilityProperty: "無制限",
   propertyDeductible: "なし",
+  propertyExcessRepair: false,
   personalInjury: "3000万円",
   passengerInjury: "なし",
+  singleCarAccident: false,
   vehicleInsurance: false,
   vehicleType: "一般",
   vehicleAmount: "",
   vehicleDeductible: "5-10万円",
+  vehicleNewCar: false,
+  vehicleTotalLoss: false,
+  vehicleTheftRental: false,
+  vehicleReplacement: false,
   legalSupport: false,
   roadService: false,
   familyBike: false,
   personalLiability: false,
   uninsuredCar: false,
+  otherVehicleCoverage: false,
+  victimRelief: false,
+  homeGarageRepair: false,
+  bicycleAccident: false,
+  personalBelongings: "なし",
   internetDiscount: false,
   paperlessDiscount: false,
   earlyDiscount: false,
   multiCarDiscount: false,
   telematicsDiscount: false,
+  newCarDiscount: false,
+  safetySupportDiscount: false,
   memo: "",
 });
 
@@ -386,6 +400,12 @@ export default function InsuranceForm({
               onChange={(v) => set("drivingScope", v)}
               options={["本人のみ", "本人＋配偶者", "本人＋家族", "限定しない"]}
             />
+            <FreeSelect
+              label="事故有係数適用期間"
+              value={form.accidentCoeffPeriod}
+              onChange={(v) => set("accidentCoeffPeriod", v)}
+              options={["0年", "1年", "2年", "3年"]}
+            />
           </div>
         </AccordionSection>
 
@@ -402,6 +422,10 @@ export default function InsuranceForm({
               options={["なし", "3000万円", "5000万円", "無制限"]} />
             <FreeSelect label="搭乗者傷害" value={form.passengerInjury} onChange={(v) => set("passengerInjury", v)}
               options={["なし", "500万円", "1000万円", "部位症状別払い"]} />
+          </div>
+          <div className="mt-3 pt-3" style={{ borderTop: "1px solid var(--c-border)" }}>
+            <Toggle label="対物超過修理費用特約" checked={form.propertyExcessRepair} onChange={(v) => set("propertyExcessRepair", v)} />
+            <Toggle label="自損事故傷害保険"     checked={form.singleCarAccident}   onChange={(v) => set("singleCarAccident", v)} />
           </div>
         </AccordionSection>
 
@@ -424,6 +448,12 @@ export default function InsuranceForm({
               </div>
               <FreeSelect label="免責金額" value={form.vehicleDeductible} onChange={(v) => set("vehicleDeductible", v)}
                 options={["なし", "5-10万円", "10-10万円", "10-15万円", "15-15万円"]} />
+              <div className="sm:col-span-2 pt-2" style={{ borderTop: "1px solid var(--c-border)" }}>
+                <Toggle label="新車特約"             checked={form.vehicleNewCar}      onChange={(v) => set("vehicleNewCar", v)} />
+                <Toggle label="全損時諸費用保険金特約" checked={form.vehicleTotalLoss}   onChange={(v) => set("vehicleTotalLoss", v)} />
+                <Toggle label="盗難時レンタカー費用特約" checked={form.vehicleTheftRental} onChange={(v) => set("vehicleTheftRental", v)} />
+                <Toggle label="車両新価特約"         checked={form.vehicleReplacement} onChange={(v) => set("vehicleReplacement", v)} />
+              </div>
             </div>
           )}
         </AccordionSection>
@@ -432,16 +462,28 @@ export default function InsuranceForm({
         <AccordionSection title="その他の特約" icon={<Wrench size={15} />}>
           <div style={{ borderRadius: 12, border: "1px solid var(--c-border)", overflow: "hidden" }}>
             {[
-              { label: "弁護士費用特約",      key: "legalSupport"      as const },
-              { label: "ロードサービス",       key: "roadService"       as const },
-              { label: "ファミリーバイク特約", key: "familyBike"        as const },
-              { label: "個人賠償責任特約",     key: "personalLiability" as const },
-              { label: "無保険車傷害",         key: "uninsuredCar"      as const },
+              { label: "弁護士費用特約",          key: "legalSupport"          as const },
+              { label: "ロードサービス",           key: "roadService"           as const },
+              { label: "ファミリーバイク特約",     key: "familyBike"            as const },
+              { label: "個人賠償責任特約",         key: "personalLiability"     as const },
+              { label: "無保険車傷害",             key: "uninsuredCar"          as const },
+              { label: "他車運転危険補償特約",     key: "otherVehicleCoverage"  as const },
+              { label: "被害者救済費用等補償特約", key: "victimRelief"          as const },
+              { label: "自宅・車庫等修理費用特約", key: "homeGarageRepair"      as const },
+              { label: "自転車事故補償特約",       key: "bicycleAccident"       as const },
             ].map(({ label, key }, i) => (
               <div key={key} style={i > 0 ? { borderTop: "1px solid var(--c-border)" } : {}}>
                 <Toggle label={label} checked={form[key]} onChange={(v) => set(key, v)} />
               </div>
             ))}
+            <div style={{ borderTop: "1px solid var(--c-border)", padding: "12px 0 4px" }}>
+              <FreeSelect
+                label="車内外身の回り品補償特約"
+                value={form.personalBelongings}
+                onChange={(v) => set("personalBelongings", v)}
+                options={["なし", "10万円", "20万円", "30万円", "50万円"]}
+              />
+            </div>
           </div>
         </AccordionSection>
 
@@ -449,11 +491,13 @@ export default function InsuranceForm({
         <AccordionSection title="割引" icon={<Tag size={15} />}>
           <div style={{ borderRadius: 12, border: "1px solid var(--c-border)", overflow: "hidden" }}>
             {[
-              { label: "インターネット割引",   key: "internetDiscount"   as const },
-              { label: "証券不発行割引",       key: "paperlessDiscount"  as const },
-              { label: "早期割引",             key: "earlyDiscount"      as const },
-              { label: "複数台割引",           key: "multiCarDiscount"   as const },
-              { label: "テレマティクス割引",   key: "telematicsDiscount" as const },
+              { label: "インターネット割引",             key: "internetDiscount"    as const },
+              { label: "証券不発行割引",                 key: "paperlessDiscount"   as const },
+              { label: "早期割引",                       key: "earlyDiscount"       as const },
+              { label: "複数台割引",                     key: "multiCarDiscount"    as const },
+              { label: "テレマティクス割引",             key: "telematicsDiscount"  as const },
+              { label: "新車割引",                       key: "newCarDiscount"      as const },
+              { label: "セーフティ・サポートカー割引",   key: "safetySupportDiscount" as const },
             ].map(({ label, key }, i) => (
               <div key={key} style={i > 0 ? { borderTop: "1px solid var(--c-border)" } : {}}>
                 <Toggle label={label} checked={form[key]} onChange={(v) => set(key, v)} />

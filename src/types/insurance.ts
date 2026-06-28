@@ -47,19 +47,26 @@ export interface InsurancePlan {
   grade: number;
   ageCondition: string;
   drivingScope: string;
+  accidentCoeffPeriod: string;  // 事故有係数適用期間
 
   // 補償内容
   liabilityPerson: string;
   liabilityProperty: string;
   propertyDeductible: string;
+  propertyExcessRepair: boolean; // 対物超過修理費用特約
   personalInjury: string;
   passengerInjury: string;
+  singleCarAccident: boolean;    // 自損事故傷害保険
 
   // 車両保険
   vehicleInsurance: boolean;
   vehicleType: string;
   vehicleAmount: string;
   vehicleDeductible: string;
+  vehicleNewCar: boolean;       // 新車特約
+  vehicleTotalLoss: boolean;    // 全損時諸費用保険金特約
+  vehicleTheftRental: boolean;  // 車両盗難時レンタカー費用特約
+  vehicleReplacement: boolean;  // 車両新価特約
 
   // その他特約
   legalSupport: boolean;
@@ -67,6 +74,11 @@ export interface InsurancePlan {
   familyBike: boolean;
   personalLiability: boolean;
   uninsuredCar: boolean;
+  otherVehicleCoverage: boolean; // 他の自動車運転危険補償特約
+  victimRelief: boolean;         // 被害者救済費用等補償特約
+  homeGarageRepair: boolean;     // 自宅・車庫等修理費用補償特約
+  bicycleAccident: boolean;      // 自転車事故補償特約
+  personalBelongings: string;    // 車内外身の回り品補償特約（金額or「なし」）
 
   // 割引
   internetDiscount: boolean;
@@ -74,6 +86,8 @@ export interface InsurancePlan {
   earlyDiscount: boolean;
   multiCarDiscount: boolean;
   telematicsDiscount: boolean;
+  newCarDiscount: boolean;          // 新車割引
+  safetySupportDiscount: boolean;   // セーフティ・サポートカー割引
 
   // メモ
   memo: string;
@@ -83,25 +97,39 @@ export const DEFAULT_PLAN: Omit<InsurancePlan, "id" | "company" | "premium" | "m
   grade: 6,
   ageCondition: "26歳以上",
   drivingScope: "限定しない",
+  accidentCoeffPeriod: "0年",
   liabilityPerson: "無制限",
   liabilityProperty: "無制限",
   propertyDeductible: "なし",
+  propertyExcessRepair: false,
   personalInjury: "3000万円",
   passengerInjury: "なし",
+  singleCarAccident: false,
   vehicleInsurance: false,
   vehicleType: "一般",
   vehicleAmount: "",
   vehicleDeductible: "5-10万円",
+  vehicleNewCar: false,
+  vehicleTotalLoss: false,
+  vehicleTheftRental: false,
+  vehicleReplacement: false,
   legalSupport: true,
   roadService: true,
   familyBike: false,
   personalLiability: false,
   uninsuredCar: true,
+  otherVehicleCoverage: false,
+  victimRelief: false,
+  homeGarageRepair: false,
+  bicycleAccident: false,
+  personalBelongings: "なし",
   internetDiscount: false,
   paperlessDiscount: false,
   earlyDiscount: false,
   multiCarDiscount: false,
   telematicsDiscount: false,
+  newCarDiscount: false,
+  safetySupportDiscount: false,
 };
 
 export interface FieldMeta {
@@ -119,31 +147,45 @@ export const FIELD_METAS: FieldMeta[] = [
   { key: "company",          label: "保険会社",       category: "基本構成" },
   { key: "premium",          label: "年間保険料",      category: "基本構成", format: (v) => `¥${Number(v).toLocaleString()}` },
   { key: "grade",            label: "等級",           category: "基本構成", format: (v) => `${v}等級` },
-  { key: "ageCondition",     label: "年齢条件",        category: "基本構成" },
-  { key: "drivingScope",     label: "運転範囲",        category: "基本構成" },
+  { key: "ageCondition",        label: "年齢条件",              category: "基本構成" },
+  { key: "drivingScope",        label: "運転範囲",              category: "基本構成" },
+  { key: "accidentCoeffPeriod", label: "事故有係数適用期間",    category: "基本構成" },
   // 補償内容
-  { key: "liabilityPerson",  label: "対人賠償",        category: "補償内容" },
-  { key: "liabilityProperty",label: "対物賠償",        category: "補償内容" },
-  { key: "propertyDeductible",label:"対物免責",        category: "補償内容" },
-  { key: "personalInjury",   label: "人身傷害",        category: "補償内容" },
-  { key: "passengerInjury",  label: "搭乗者傷害",      category: "補償内容" },
+  { key: "liabilityPerson",     label: "対人賠償",              category: "補償内容" },
+  { key: "liabilityProperty",   label: "対物賠償",              category: "補償内容" },
+  { key: "propertyDeductible",  label: "対物免責",              category: "補償内容" },
+  { key: "propertyExcessRepair",label: "対物超過修理費用特約",  category: "補償内容", format: bool },
+  { key: "personalInjury",      label: "人身傷害",              category: "補償内容" },
+  { key: "passengerInjury",     label: "搭乗者傷害",            category: "補償内容" },
+  { key: "singleCarAccident",   label: "自損事故傷害保険",      category: "補償内容", format: bool },
   // 車両保険
-  { key: "vehicleInsurance", label: "車両保険",        category: "車両保険", format: bool },
-  { key: "vehicleType",      label: "車両保険種類",     category: "車両保険" },
-  { key: "vehicleAmount",    label: "車両保険金額",     category: "車両保険", format: (v) => v ? `¥${Number(v).toLocaleString()}` : "—" },
-  { key: "vehicleDeductible",label: "車両免責金額",     category: "車両保険" },
+  { key: "vehicleInsurance",    label: "車両保険",              category: "車両保険", format: bool },
+  { key: "vehicleType",         label: "車両保険種類",          category: "車両保険" },
+  { key: "vehicleAmount",       label: "車両保険金額",          category: "車両保険", format: (v) => v ? `¥${Number(v).toLocaleString()}` : "—" },
+  { key: "vehicleDeductible",   label: "車両免責金額",          category: "車両保険" },
+  { key: "vehicleNewCar",       label: "新車特約",              category: "車両保険", format: bool },
+  { key: "vehicleTotalLoss",    label: "全損時諸費用特約",      category: "車両保険", format: bool },
+  { key: "vehicleTheftRental",  label: "盗難時レンタカー特約",  category: "車両保険", format: bool },
+  { key: "vehicleReplacement",  label: "車両新価特約",          category: "車両保険", format: bool },
   // その他特約
-  { key: "legalSupport",     label: "弁護士費用特約",  category: "その他特約", format: bool },
-  { key: "roadService",      label: "ロードサービス",  category: "その他特約", format: bool },
-  { key: "familyBike",       label: "ファミリーバイク特約", category: "その他特約", format: bool },
-  { key: "personalLiability",label: "個人賠償責任特約", category: "その他特約", format: bool },
-  { key: "uninsuredCar",     label: "無保険車傷害",    category: "その他特約", format: bool },
+  { key: "legalSupport",        label: "弁護士費用特約",        category: "その他特約", format: bool },
+  { key: "roadService",         label: "ロードサービス",        category: "その他特約", format: bool },
+  { key: "familyBike",          label: "ファミリーバイク特約",  category: "その他特約", format: bool },
+  { key: "personalLiability",   label: "個人賠償責任特約",      category: "その他特約", format: bool },
+  { key: "uninsuredCar",        label: "無保険車傷害",          category: "その他特約", format: bool },
+  { key: "otherVehicleCoverage",label: "他車運転危険補償特約",  category: "その他特約", format: bool },
+  { key: "victimRelief",        label: "被害者救済費用等特約",  category: "その他特約", format: bool },
+  { key: "homeGarageRepair",    label: "自宅・車庫修理費用特約",category: "その他特約", format: bool },
+  { key: "bicycleAccident",     label: "自転車事故補償特約",    category: "その他特約", format: bool },
+  { key: "personalBelongings",  label: "身の回り品補償特約",    category: "その他特約" },
   // 割引
-  { key: "internetDiscount",   label: "インターネット割引",   category: "割引", format: bool },
-  { key: "paperlessDiscount",  label: "証券不発行割引",       category: "割引", format: bool },
-  { key: "earlyDiscount",      label: "早期割引",             category: "割引", format: bool },
-  { key: "multiCarDiscount",   label: "複数台割引",           category: "割引", format: bool },
-  { key: "telematicsDiscount", label: "テレマティクス割引",   category: "割引", format: bool },
+  { key: "internetDiscount",    label: "インターネット割引",    category: "割引", format: bool },
+  { key: "paperlessDiscount",   label: "証券不発行割引",        category: "割引", format: bool },
+  { key: "earlyDiscount",       label: "早期割引",              category: "割引", format: bool },
+  { key: "multiCarDiscount",    label: "複数台割引",            category: "割引", format: bool },
+  { key: "telematicsDiscount",  label: "テレマティクス割引",    category: "割引", format: bool },
+  { key: "newCarDiscount",      label: "新車割引",              category: "割引", format: bool },
+  { key: "safetySupportDiscount",label:"セーフティ割引",        category: "割引", format: bool },
   // メモ
   { key: "memo",               label: "メモ",                category: "メモ" },
 ];
