@@ -14,6 +14,23 @@ interface Props {
 const LICENSE_COLORS   = ["ゴールド", "ブルー", "グリーン"];
 const ACCIDENT_OPTIONS = [0, 1, 2, 3, 4, 5];
 const GRADE_OPTIONS    = Array.from({ length: 20 }, (_, i) => i + 1);
+const MONTHS           = Array.from({ length: 12 }, (_, i) => i + 1);
+
+function toWareki(year: number): string {
+  if (year >= 2019) {
+    const n = year - 2018;
+    return `令和${n === 1 ? "元" : n}年 (${year})`;
+  }
+  if (year >= 1989) return `平成${year - 1988}年 (${year})`;
+  return `昭和${year - 1925}年 (${year})`;
+}
+
+const CURRENT_YEAR = new Date().getFullYear();
+const REGISTRATION_YEARS = Array.from(
+  { length: CURRENT_YEAR - 1990 + 1 },
+  (_, i) => CURRENT_YEAR - i,
+);
+
 const ANNUAL_MILEAGES  = [
   "5,000km未満",
   "5,000〜10,000km",
@@ -205,6 +222,36 @@ export default function SharedInfoPanel({ info, locked, onUpdate, onToggleLock }
               </div>
             </div>
 
+            {/* 初度登録年月 */}
+            <div>
+              <label className="lbl">初度登録年月</label>
+              <div className="flex gap-2">
+                <select
+                  value={info.registrationYear || ""}
+                  onChange={(e) => set("registrationYear", Number(e.target.value))}
+                  disabled={locked}
+                  className="field flex-1 min-w-0"
+                >
+                  <option value="">-- 年 --</option>
+                  {REGISTRATION_YEARS.map((y) => (
+                    <option key={y} value={y}>{toWareki(y)}</option>
+                  ))}
+                </select>
+                <select
+                  value={info.registrationMonth || ""}
+                  onChange={(e) => set("registrationMonth", Number(e.target.value))}
+                  disabled={locked}
+                  className="field"
+                  style={{ width: 84, flexShrink: 0 }}
+                >
+                  <option value="">-- 月 --</option>
+                  {MONTHS.map((m) => (
+                    <option key={m} value={m}>{m}月</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             {/* 年間予定走行距離 */}
             <div>
               <label className="lbl">年間予定走行距離</label>
@@ -238,6 +285,12 @@ export default function SharedInfoPanel({ info, locked, onUpdate, onToggleLock }
               {info.licenseColor  && <Badge label="免許" value={info.licenseColor} />}
               <Badge label="事故" value={`${info.accidentCount}回`} />
               <Badge label="等級" value={`${info.currentGrade}等級`} />
+              {info.registrationYear > 0 && (
+                <Badge
+                  label="初度登録"
+                  value={`${toWareki(info.registrationYear).split(" ")[0]}${info.registrationMonth > 0 ? `${info.registrationMonth}月` : ""}`}
+                />
+              )}
               {info.carModel      && <Badge label="車種" value={info.carModel} />}
               {info.currentMileage > 0 && <Badge label="走行" value={`${info.currentMileage.toLocaleString()}km`} />}
               {info.annualMileage && <Badge label="年間走行" value={info.annualMileage} />}

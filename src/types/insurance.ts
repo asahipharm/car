@@ -18,12 +18,14 @@ export const INSURANCE_COMPANIES: InsuranceCompany[] = [
 ];
 
 export interface SharedInfo {
-  licenseColor: string;   // "ゴールド" | "ブルー" | "グリーン" | "その他"
-  accidentCount: number;  // 直近3年の事故回数
-  currentGrade: number;   // 現在の等級
-  carModel: string;       // 車種/型式（任意）
-  currentMileage: number; // 現在の走行距離（km）
-  annualMileage: string;  // 1年間の予定走行距離
+  licenseColor: string;       // "ゴールド" | "ブルー" | "グリーン" | "その他"
+  accidentCount: number;      // 直近3年の事故回数
+  currentGrade: number;       // 現在の等級
+  carModel: string;           // 車種/型式（任意）
+  currentMileage: number;     // 現在の走行距離（km）
+  annualMileage: string;      // 1年間の予定走行距離
+  registrationYear: number;   // 初度登録年（西暦、0 = 未設定）
+  registrationMonth: number;  // 初度登録月（1-12、0 = 未設定）
 }
 
 export const DEFAULT_SHARED_INFO: SharedInfo = {
@@ -33,6 +35,8 @@ export const DEFAULT_SHARED_INFO: SharedInfo = {
   carModel: "",
   currentMileage: 0,
   annualMileage: "10,000km未満",
+  registrationYear: 0,
+  registrationMonth: 0,
 };
 
 export interface InsurancePlan {
