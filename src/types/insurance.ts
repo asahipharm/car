@@ -27,7 +27,7 @@ export interface SharedInfo {
 }
 
 export const DEFAULT_SHARED_INFO: SharedInfo = {
-  licenseColor: "ブルー",
+  licenseColor: "ゴールド",
   accidentCount: 0,
   currentGrade: 6,
   carModel: "",
