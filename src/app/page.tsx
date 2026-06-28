@@ -73,10 +73,13 @@ export default function Home() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white tracking-tight">
-              自動車保険 詳細比較ツール
+              くるまくらべメモ
             </h1>
             <p className="text-blue-200 text-sm mt-0.5">
-              複数プランを並べて詳細比較・差異ハイライト・Excel出力
+              自動車保険をわかりやすく比較するメモ
+            </p>
+            <p className="text-blue-300 text-xs mt-1">
+              比較結果をPDFやエクセル形式で保存できます
             </p>
           </div>
         </div>
