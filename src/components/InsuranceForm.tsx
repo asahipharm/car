@@ -81,42 +81,78 @@ interface Props {
 }
 
 /* ── CSV parser ───────────────────────────────── */
+
+// Properly parse one CSV line, handling "quoted,fields"
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let cur = "";
+  let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQ = !inQ; }
+    else if (ch === "," && !inQ) { result.push(cur.trim()); cur = ""; }
+    else { cur += ch; }
+  }
+  result.push(cur.trim());
+  return result;
+}
+
+function normalizeScope(scope: string): string {
+  if (scope.includes("配偶者"))                               return "本人＋配偶者";
+  if (scope.includes("家族"))                                 return "本人＋家族";
+  if (scope.includes("本人") && /のみ|限定/.test(scope))     return "本人のみ";
+  if (/限定しない|限定なし/.test(scope))                     return "限定しない";
+  return scope;
+}
+
 function parseCSVToForm(csvText: string): Partial<FormState> {
-  // Build item→value map from カテゴリ,項目,内容 format
-  const data = new Map<string, string>();
   const lines = csvText.trim().split(/\r?\n/);
+  if (lines.length < 2) return {};
+
+  const header = parseCSVLine(lines[0]);
+  // 3-column: カテゴリ,項目,内容  /  2-column: 項目,内容
+  const threeCol = header.length >= 3;
+
+  const data = new Map<string, string>();
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
-    const c1 = line.indexOf(",");
-    if (c1 === -1) continue;
-    const c2 = line.indexOf(",", c1 + 1);
-    if (c2 === -1) continue;
-    const item  = line.substring(c1 + 1, c2).trim();
-    const value = line.substring(c2 + 1).trim();
-    if (item) data.set(item, value);
+    const cols = parseCSVLine(line);
+    const item  = threeCol ? cols[1] : cols[0];
+    const value = threeCol ? cols.slice(2).join(",") : (cols[1] ?? "");
+    if (item?.trim()) data.set(item.trim(), value.trim());
   }
 
-  const get  = (k: string) => data.get(k) ?? "";
-  // "なし" or empty → false, everything else → true
-  const bool = (k: string) => { const v = get(k); return data.has(k) ? (v !== "なし" && v !== "") : undefined; };
+  const get  = (...keys: string[]) => { for (const k of keys) { const v = data.get(k); if (v !== undefined) return v; } return ""; };
+  const has  = (...keys: string[]) => keys.some((k) => data.has(k));
+  // "なし"・空・"（人身傷害基準）"等 → false, それ以外 → true
+  const bool = (...keys: string[]): boolean | undefined => {
+    if (!has(...keys)) return undefined;
+    const v = get(...keys);
+    return v !== "なし" && v !== "" && !v.startsWith("なし");
+  };
+  // Strip commas/yen/spaces, parse int
+  const num  = (v: string) => parseInt(v.replace(/[^\d]/g, ""), 10) || 0;
+  // Strip Japanese parentheticals: "1億円（車外危険補償あり）" → "1億円"
+  const clean = (v: string) => v.replace(/[（(][^）)]*[）)]/g, "").trim();
 
   const result: Partial<FormState> = {};
 
-  // 基本構成
-  const company = get("申込経路");
+  // ── 基本構成 ──
+  const company = get("申込経路", "保険会社");
   if (company) result.company = company;
 
-  const premiumStr = get("年払保険料") || get("月払保険料");
-  if (premiumStr) {
-    const n = parseInt(premiumStr.replace(/[^\d]/g, ""), 10);
-    if (n > 0) result.premium = n;
-  }
+  const premiumStr = get("年払保険料", "年間保険料");
+  if (premiumStr) { const n = num(premiumStr); if (n > 0) result.premium = n; }
 
-  const gradeStr = get("ノンフリート等級");
-  if (gradeStr) {
-    const g = parseInt(gradeStr, 10);
+  // "15等級" or "15等級（事故有係数適用期間0年）"
+  const gradeRaw = get("ノンフリート等級", "等級");
+  if (gradeRaw) {
+    const g = parseInt(gradeRaw, 10);
     if (g > 0) result.grade = g;
+    // extract embedded accidentCoeffPeriod
+    const accpMatch = gradeRaw.match(/事故有係数適用期間\s*(\d+年)/);
+    if (accpMatch) result.accidentCoeffPeriod = accpMatch[1];
   }
 
   const accp = get("事故有係数適用期間");
@@ -125,52 +161,60 @@ function parseCSVToForm(csvText: string): Partial<FormState> {
   const age = get("年齢条件");
   if (age) result.ageCondition = age.replace(/補償$/, "").trim();
 
-  const scope = get("運転者の範囲") || get("運転者限定");
-  if (scope) {
-    if      (scope.includes("配偶者"))                           result.drivingScope = "本人＋配偶者";
-    else if (scope.includes("家族"))                             result.drivingScope = "本人＋家族";
-    else if (scope.includes("本人") && /のみ|限定/.test(scope)) result.drivingScope = "本人のみ";
-    else if (/限定しない|限定なし|なし/.test(scope))            result.drivingScope = "限定しない";
-    else                                                         result.drivingScope = scope;
+  const scope = get("運転者の範囲", "運転者限定");
+  if (scope) result.drivingScope = normalizeScope(scope);
+
+  // ── 補償内容 ──
+  const lp = get("対人賠償保険", "対人賠償"); if (lp) result.liabilityPerson = lp;
+  const lpr = get("対物賠償保険", "対物賠償"); if (lpr) result.liabilityProperty = lpr;
+
+  const perB = bool("対物超過修理費用特約", "対物差額修理費用補償");
+  if (perB !== undefined) result.propertyExcessRepair = perB;
+
+  const piRaw = get("人身傷害保険金額", "人身傷害");
+  if (piRaw) result.personalInjury = clean(piRaw);
+
+  const passRaw = get("搭乗者傷害保険", "搭乗者傷害"); if (passRaw) result.passengerInjury = passRaw;
+
+  const ucB = bool("無保険車傷害保険", "無保険車傷害"); if (ucB !== undefined) result.uninsuredCar = ucB;
+  const scaB = bool("自損事故傷害保険", "自損傷害");   if (scaB !== undefined) result.singleCarAccident = scaB;
+
+  // ── 車両保険 ──
+  const viRaw = get("車両保険");
+  if (data.has("車両保険")) {
+    result.vehicleInsurance = viRaw !== "なし" && viRaw !== "";
+    // "一般車両" / "一般" / "エコノミー" → vehicleType
+    if (result.vehicleInsurance && viRaw !== "あり") result.vehicleType = viRaw;
   }
-
-  // 補償内容
-  const lp = get("対人賠償保険"); if (lp) result.liabilityPerson = lp;
-  const lpr = get("対物賠償保険"); if (lpr) result.liabilityProperty = lpr;
-  const per = bool("対物超過修理費用特約"); if (per !== undefined) result.propertyExcessRepair = per;
-  const pi = get("人身傷害保険金額"); if (pi) result.personalInjury = pi;
-  const pass = get("搭乗者傷害保険"); if (pass) result.passengerInjury = pass;
-  const uc = bool("無保険車傷害保険"); if (uc !== undefined) result.uninsuredCar = uc;
-  const sca = bool("自損事故傷害保険"); if (sca !== undefined) result.singleCarAccident = sca;
-
-  // 車両保険
-  const vi = bool("車両保険"); if (vi !== undefined) result.vehicleInsurance = vi;
   const va = get("車両保険金額"); if (va) result.vehicleAmount = va;
-  const vt = get("車両保険種類") || get("車両保険タイプ"); if (vt) result.vehicleType = vt;
-  const vnc = bool("新車特約"); if (vnc !== undefined) result.vehicleNewCar = vnc;
-  const vtl = bool("全損時諸費用保険金特約"); if (vtl !== undefined) result.vehicleTotalLoss = vtl;
-  const vtr = bool("車両盗難時レンタカー費用特約"); if (vtr !== undefined) result.vehicleTheftRental = vtr;
-  const vrep = bool("車両新価特約"); if (vrep !== undefined) result.vehicleReplacement = vrep;
+  const vded = get("車両自己負担額", "車両免責金額"); if (vded) result.vehicleDeductible = vded;
 
-  // その他特約
-  const ls = bool("弁護士費用特約"); if (ls !== undefined) result.legalSupport = ls;
-  const rs = bool("ロードサービス特約") ?? bool("ロードサービス"); if (rs !== undefined) result.roadService = rs;
-  const fb = bool("ファミリーバイク特約"); if (fb !== undefined) result.familyBike = fb;
-  const pl = bool("個人賠償責任危険補償特約") ?? bool("個人賠償責任特約"); if (pl !== undefined) result.personalLiability = pl;
-  const ovc = bool("他の自動車運転危険補償特約"); if (ovc !== undefined) result.otherVehicleCoverage = ovc;
-  const vr = bool("被害者救済費用等補償特約"); if (vr !== undefined) result.victimRelief = vr;
-  const hgr = bool("自宅・車庫等修理費用補償特約"); if (hgr !== undefined) result.homeGarageRepair = hgr;
-  const ba = bool("自転車事故補償特約"); if (ba !== undefined) result.bicycleAccident = ba;
-  const pb = get("車内外身の回り品補償特約"); if (pb) result.personalBelongings = pb;
+  const vncRaw = get("新車特約");
+  if (data.has("新車特約")) result.vehicleNewCar = vncRaw !== "なし" && vncRaw !== "";
 
-  // 割引
-  const id = bool("インターネット割引"); if (id !== undefined) result.internetDiscount = id;
-  const pd = bool("証券不発行割引") ?? bool("ペーパーレス割引"); if (pd !== undefined) result.paperlessDiscount = pd;
-  const ed = bool("早期申込割引") ?? bool("早期割引"); if (ed !== undefined) result.earlyDiscount = ed;
-  const md = bool("複数台割引") ?? bool("セカンドカー割引"); if (md !== undefined) result.multiCarDiscount = md;
-  const td = bool("テレマティクス割引"); if (td !== undefined) result.telematicsDiscount = td;
-  const ncd = bool("新車割引"); if (ncd !== undefined) result.newCarDiscount = ncd;
-  const ssd = bool("セーフティ・サポートカー割引") ?? bool("ASV割引"); if (ssd !== undefined) result.safetySupportDiscount = ssd;
+  const vtlB = bool("全損時諸費用保険金特約", "全損時諸費用特約"); if (vtlB !== undefined) result.vehicleTotalLoss = vtlB;
+  const vtrB = bool("車両盗難時レンタカー費用特約");               if (vtrB !== undefined) result.vehicleTheftRental = vtrB;
+  const vrepB = bool("車両新価特約");                              if (vrepB !== undefined) result.vehicleReplacement = vrepB;
+
+  // ── その他特約 ──
+  const lsB = bool("弁護士費用特約");                                      if (lsB !== undefined) result.legalSupport = lsB;
+  const rsB = bool("ロードサービス特約", "ロードサービス");                 if (rsB !== undefined) result.roadService = rsB;
+  const fbB = bool("ファミリーバイク特約");                                 if (fbB !== undefined) result.familyBike = fbB;
+  const plB = bool("個人賠償責任危険補償特約", "個人賠償責任特約");         if (plB !== undefined) result.personalLiability = plB;
+  const ovcB = bool("他の自動車運転危険補償特約", "他車運転特約");          if (ovcB !== undefined) result.otherVehicleCoverage = ovcB;
+  const vrB = bool("被害者救済費用等補償特約");                             if (vrB !== undefined) result.victimRelief = vrB;
+  const hgrB = bool("自宅・車庫等修理費用補償特約", "自宅・車庫修理費用"); if (hgrB !== undefined) result.homeGarageRepair = hgrB;
+  const baB = bool("自転車事故補償特約", "自転車事故補償");                 if (baB !== undefined) result.bicycleAccident = baB;
+  const pb = get("車内外身の回り品補償特約", "車内外身の回り品補償");       if (pb) result.personalBelongings = pb;
+
+  // ── 割引 ──
+  const idB  = bool("インターネット割引");                            if (idB  !== undefined) result.internetDiscount = idB;
+  const pdB  = bool("証券不発行割引", "ペーパーレス割引");            if (pdB  !== undefined) result.paperlessDiscount = pdB;
+  const edB  = bool("早期申込割引", "早期割引");                      if (edB  !== undefined) result.earlyDiscount = edB;
+  const mdB  = bool("複数台割引", "セカンドカー割引");                if (mdB  !== undefined) result.multiCarDiscount = mdB;
+  const tdB  = bool("テレマティクス割引");                            if (tdB  !== undefined) result.telematicsDiscount = tdB;
+  const ncdB = bool("新車割引");                                      if (ncdB !== undefined) result.newCarDiscount = ncdB;
+  const ssdB = bool("セーフティ・サポートカー割引", "ASV割引");       if (ssdB !== undefined) result.safetySupportDiscount = ssdB;
 
   return result;
 }
