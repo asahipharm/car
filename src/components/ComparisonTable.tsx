@@ -131,9 +131,10 @@ export default function ComparisonTable({
   const onTopScroll   = () => { if (tableWrapRef.current && topBarRef.current)   tableWrapRef.current.scrollLeft = topBarRef.current.scrollLeft; };
   const onTableScroll = () => { if (topBarRef.current    && tableWrapRef.current) topBarRef.current.scrollLeft    = tableWrapRef.current.scrollLeft; };
 
+  const sortedPlans = useMemo(() => sortPlans(plans, sortKey), [plans, sortKey]);
+
   if (plans.length === 0) return null;
 
-  const sortedPlans = useMemo(() => sortPlans(plans, sortKey), [plans, sortKey]);
   const minPremium  = Math.min(...plans.map((p) => p.premium));
   const snapshotWarnings = buildSnapshotWarnings(plans);
 
