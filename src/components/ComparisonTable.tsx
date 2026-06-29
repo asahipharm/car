@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Trash2, Trophy, CheckCircle2, XCircle, Filter, AlertTriangle,
-  Copy, Check, CopyPlus, Pencil,
+  Copy, Check, CopyPlus, Pencil, ArrowUpDown,
 } from "lucide-react";
 import type { InsurancePlan, SharedInfo } from "@/types/insurance";
 import { FIELD_METAS, INSURANCE_COMPANIES } from "@/types/insurance";
@@ -16,6 +16,28 @@ interface Props {
   onDuplicate: (id: string) => void;
   onEdit: (plan: InsurancePlan) => void;
   editingPlanId?: string | null;
+}
+
+type SortKey = "default" | "price-asc" | "price-desc" | "vehicle-first" | "vehicle-last";
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "default",       label: "追加順" },
+  { value: "price-asc",     label: "金額 安い順" },
+  { value: "price-desc",    label: "金額 高い順" },
+  { value: "vehicle-first", label: "車両保険あり優先" },
+  { value: "vehicle-last",  label: "車両保険なし優先" },
+];
+
+function sortPlans(plans: InsurancePlan[], key: SortKey): InsurancePlan[] {
+  if (key === "default") return plans;
+  return [...plans].sort((a, b) => {
+    switch (key) {
+      case "price-asc":     return a.premium - b.premium;
+      case "price-desc":    return b.premium - a.premium;
+      case "vehicle-first": return (b.vehicleInsurance ? 1 : 0) - (a.vehicleInsurance ? 1 : 0);
+      case "vehicle-last":  return (a.vehicleInsurance ? 1 : 0) - (b.vehicleInsurance ? 1 : 0);
+    }
+  });
 }
 
 const CATEGORIES = ["基本構成", "補償内容", "車両保険", "その他特約", "割引", "メモ"];
@@ -88,15 +110,17 @@ export default function ComparisonTable({
 }: Props) {
   const [diffOnly, setDiffOnly] = useState(false);
   const [copied,   setCopied]   = useState(false);
+  const [sortKey,  setSortKey]  = useState<SortKey>("default");
 
   if (plans.length === 0) return null;
 
-  const minPremium = Math.min(...plans.map((p) => p.premium));
+  const sortedPlans = useMemo(() => sortPlans(plans, sortKey), [plans, sortKey]);
+  const minPremium  = Math.min(...plans.map((p) => p.premium));
   const snapshotWarnings = buildSnapshotWarnings(plans);
 
   const isDiffRow = (key: keyof InsurancePlan): boolean => {
-    if (plans.length < 2) return false;
-    return new Set(plans.map((p) => String(p[key]))).size > 1;
+    if (sortedPlans.length < 2) return false;
+    return new Set(sortedPlans.map((p) => String(p[key]))).size > 1;
   };
 
   const visibleFields = FIELD_METAS.filter((m) => diffOnly ? isDiffRow(m.key) : true);
@@ -107,7 +131,7 @@ export default function ComparisonTable({
   })).filter((g) => g.fields.length > 0);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(buildTsv(plans, visibleFields));
+    await navigator.clipboard.writeText(buildTsv(sortedPlans, visibleFields));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -137,7 +161,37 @@ export default function ComparisonTable({
           比較一覧
           <span className="text-[var(--c-text-3)] font-normal text-sm ml-2">({plans.length}件)</span>
         </h2>
-        <div className="flex items-center gap-2 print:hidden">
+        <div className="flex items-center gap-2 print:hidden flex-wrap justify-end">
+          {/* 並び替え */}
+          <div
+            className="flex items-center gap-1.5 rounded-xl px-3 text-sm"
+            style={{
+              height: 36,
+              border: "1.5px solid var(--c-border)",
+              background: "var(--c-surface)",
+              color: sortKey !== "default" ? "var(--c-blue)" : "var(--c-text-2)",
+              borderColor: sortKey !== "default" ? "var(--c-blue)" : "var(--c-border)",
+            }}
+          >
+            <ArrowUpDown size={12} className="shrink-0 pointer-events-none" />
+            <select
+              value={sortKey}
+              onChange={(e) => setSortKey(e.target.value as SortKey)}
+              style={{
+                fontSize: 13,
+                background: "transparent",
+                border: "none",
+                outline: "none",
+                cursor: "pointer",
+                color: "inherit",
+              }}
+            >
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+
           <button
             onClick={handleCopy}
             className={`btn ${copied ? "btn-primary" : "btn-secondary"}`}
@@ -173,7 +227,7 @@ export default function ComparisonTable({
               >
                 項目
               </th>
-              {plans.map((plan) => {
+              {sortedPlans.map((plan) => {
                 const isCheapest = plan.premium === minPremium;
                 const isEditing  = editingPlanId === plan.id;
                 const companyMeta = INSURANCE_COMPANIES.find((c) => c.name === plan.company);
@@ -273,7 +327,7 @@ export default function ComparisonTable({
                             {meta.label}
                           </div>
                         </td>
-                        {plans.map((plan) => {
+                        {sortedPlans.map((plan) => {
                           const raw = plan[meta.key];
                           return (
                             <td key={plan.id} className="px-5 py-3 text-center">
