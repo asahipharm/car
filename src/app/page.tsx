@@ -20,44 +20,41 @@ const FEATURES = [
 export default function Home() {
   const [plans, setPlans] = useState<InsurancePlan[]>([]);
   const [editingPlan, setEditingPlan] = useState<InsurancePlan | null>(null);
-  const [plansLoaded, setPlansLoaded] = useState(false);
   const { info, update, locked, toggleLocked } = useSharedInfo();
 
-  // 読み込みを先に完了させてからでないと保存しない
+  // 起動時に一度だけ読み込む
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) setPlans(JSON.parse(saved));
     } catch { /* ignore */ }
-    setPlansLoaded(true);
   }, []);
 
-  useEffect(() => {
-    if (!plansLoaded) return; // 読み込み完了前は保存しない
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(plans));
-  }, [plans, plansLoaded]);
+  // localStorageへ即時書き込み（useEffectを介さず同期的に保存）
+  const savePlans = (next: InsurancePlan[]) => {
+    setPlans(next);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  };
 
-  const handleAdd = (plan: InsurancePlan) => setPlans((prev) => [...prev, plan]);
+  const handleAdd = (plan: InsurancePlan) => savePlans([...plans, plan]);
 
   const handleDelete = (id: string) => {
-    setPlans((prev) => prev.filter((p) => p.id !== id));
+    savePlans(plans.filter((p) => p.id !== id));
     if (editingPlan?.id === id) setEditingPlan(null);
   };
 
   const handleDuplicate = (id: string) => {
-    setPlans((prev) => {
-      const idx = prev.findIndex((p) => p.id === id);
-      if (idx === -1) return prev;
-      const copy: InsurancePlan = { ...prev[idx], id: crypto.randomUUID() };
-      const next = [...prev];
-      next.splice(idx + 1, 0, copy);
-      return next;
-    });
+    const idx = plans.findIndex((p) => p.id === id);
+    if (idx === -1) return;
+    const copy: InsurancePlan = { ...plans[idx], id: crypto.randomUUID() };
+    const next = [...plans];
+    next.splice(idx + 1, 0, copy);
+    savePlans(next);
   };
 
   const handleEdit   = (plan: InsurancePlan) => setEditingPlan(plan);
   const handleUpdate = (plan: InsurancePlan) => {
-    setPlans((prev) => prev.map((p) => (p.id === plan.id ? plan : p)));
+    savePlans(plans.map((p) => (p.id === plan.id ? plan : p)));
     setEditingPlan(null);
   };
   const handleCancelEdit = () => setEditingPlan(null);
