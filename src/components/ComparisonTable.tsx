@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
   Trash2, Trophy, CheckCircle2, XCircle, Filter, AlertTriangle,
   Copy, Check, CopyPlus, Pencil, ArrowUpDown,
@@ -112,6 +112,25 @@ export default function ComparisonTable({
   const [copied,   setCopied]   = useState(false);
   const [sortKey,  setSortKey]  = useState<SortKey>("default");
 
+  const topBarRef    = useRef<HTMLDivElement>(null);
+  const topInnerRef  = useRef<HTMLDivElement>(null);
+  const tableWrapRef = useRef<HTMLDivElement>(null);
+
+  // テーブルの横幅を上部スクロールバーに同期（plans/sortKey/diffOnly が変わるたびに更新）
+  useEffect(() => {
+    const sync = () => {
+      if (tableWrapRef.current && topInnerRef.current)
+        topInnerRef.current.style.width = `${tableWrapRef.current.scrollWidth}px`;
+    };
+    sync();
+    const ro = new ResizeObserver(sync);
+    if (tableWrapRef.current) ro.observe(tableWrapRef.current);
+    return () => ro.disconnect();
+  }, [plans, sortKey, diffOnly]);
+
+  const onTopScroll   = () => { if (tableWrapRef.current && topBarRef.current)   tableWrapRef.current.scrollLeft = topBarRef.current.scrollLeft; };
+  const onTableScroll = () => { if (topBarRef.current    && tableWrapRef.current) topBarRef.current.scrollLeft    = tableWrapRef.current.scrollLeft; };
+
   if (plans.length === 0) return null;
 
   const sortedPlans = useMemo(() => sortPlans(plans, sortKey), [plans, sortKey]);
@@ -213,7 +232,17 @@ export default function ComparisonTable({
       </div>
 
       {/* Table */}
-      <div className="card overflow-hidden overflow-x-auto">
+      <div className="card overflow-hidden">
+        {/* 上部スクロールバー */}
+        <div
+          ref={topBarRef}
+          onScroll={onTopScroll}
+          className="overflow-x-auto overflow-y-hidden print:hidden"
+          style={{ height: 14 }}
+        >
+          <div ref={topInnerRef} style={{ height: 1 }} />
+        </div>
+        <div ref={tableWrapRef} onScroll={onTableScroll} className="overflow-x-auto">
         <table className="min-w-full border-collapse text-sm">
           <thead>
             <tr
@@ -359,7 +388,8 @@ export default function ComparisonTable({
             })}
           </tbody>
         </table>
-      </div>
+        </div>{/* tableWrapRef */}
+      </div>{/* card */}
 
       {diffOnly && visibleFields.length === 0 && (
         <p className="text-center text-[var(--c-text-3)] text-sm py-6">
