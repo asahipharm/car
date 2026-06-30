@@ -157,7 +157,7 @@ export default function ComparisonTable({
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" data-print-table>
 
       {/* Snapshot warning */}
       {snapshotWarnings.length > 0 && (

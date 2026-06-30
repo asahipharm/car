@@ -33,7 +33,27 @@ export default function ExportMenu({ plans, sharedInfo }: Props) {
   const handlePdf = () => {
     setLoading("pdf");
     setOpen(false);
-    setTimeout(() => { window.print(); setLoading(null); }, 100);
+
+    // テーブルが印刷可能幅を超える場合は zoom で縮小
+    const tableEl = document.querySelector<HTMLElement>('[data-print-table]');
+    if (tableEl) {
+      // A4 横: 297mm - 余白16mm = 281mm ≈ 1062px (96dpi換算)
+      const printWidthPx = 1062;
+      const tableWidthPx = tableEl.scrollWidth;
+      if (tableWidthPx > printWidthPx) {
+        const zoom = (printWidthPx / tableWidthPx).toFixed(4);
+        const style = document.createElement('style');
+        style.id = '__pdf-zoom__';
+        style.textContent = `@media print { [data-print-table] { zoom: ${zoom}; } }`;
+        document.head.appendChild(style);
+      }
+    }
+
+    setTimeout(() => {
+      window.print();
+      document.getElementById('__pdf-zoom__')?.remove();
+      setLoading(null);
+    }, 200);
   };
 
   return (

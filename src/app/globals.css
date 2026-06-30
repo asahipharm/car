@@ -185,18 +185,41 @@ textarea.field {
 
 /* ── Print ──────────────────────────────────────── */
 @media print {
-  @page { margin: 15mm 10mm; }
+  @page { size: A4 landscape; margin: 10mm 8mm; }
+
   body { background: #fff !important; color: #000 !important; }
   body::before {
     content: "くるまくらべメモ - 自動車保険比較結果";
     display: block;
-    font-size: 18px;
+    font-size: 14px;
     font-weight: bold;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
     color: #1e293b;
   }
-  table { border-collapse: collapse !important; }
-  th, td { border: 1px solid #e2e8f0 !important; }
-  tr { page-break-inside: avoid; }
+
+  /* すべてのオーバーフロー制限を解除 */
+  .overflow-hidden,
   .overflow-x-auto { overflow: visible !important; }
+
+  /* 付箋等の sticky 解除 */
+  .sticky { position: static !important; }
+
+  /* コンパクトなテーブルスタイル */
+  table {
+    border-collapse: collapse !important;
+    font-size: 8.5px !important;
+    width: 100% !important;
+  }
+  th, td {
+    border: 0.5px solid #e2e8f0 !important;
+    padding: 3px 5px !important;
+    min-width: 0 !important;
+  }
+  tr { page-break-inside: avoid; }
+
+  /* 背景色・色を印刷に含める */
+  *, *::before, *::after {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 }
